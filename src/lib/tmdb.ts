@@ -86,6 +86,43 @@ export const tmdbApi = {
     const data = await response.json();
     return data.results || [];
   },
+
+  async discoverWithFilters(
+    mediaType: 'movie' | 'tv' = 'movie',
+    filters: {
+      genres?: number[];
+      yearFrom?: number;
+      yearTo?: number;
+      ratingFrom?: number;
+    }
+  ): Promise<Content[]> {
+    const params = new URLSearchParams({
+      api_key: TMDB_API_KEY,
+      language: 'ru-RU',
+      page: '1',
+      sort_by: 'popularity.desc',
+    });
+
+    if (filters.genres && filters.genres.length > 0) {
+      params.append('with_genres', filters.genres.join(','));
+    }
+
+    if (filters.yearFrom) {
+      params.append(mediaType === 'movie' ? 'primary_release_date.gte' : 'first_air_date.gte', `${filters.yearFrom}-01-01`);
+    }
+
+    if (filters.yearTo) {
+      params.append(mediaType === 'movie' ? 'primary_release_date.lte' : 'first_air_date.lte', `${filters.yearTo}-12-31`);
+    }
+
+    if (filters.ratingFrom && filters.ratingFrom > 0) {
+      params.append('vote_average.gte', filters.ratingFrom.toString());
+    }
+
+    const response = await fetch(`${TMDB_BASE_URL}/discover/${mediaType}?${params.toString()}`);
+    const data = await response.json();
+    return data.results || [];
+  },
 };
 
 export const getLumexUrl = (tmdbId: number, mediaType: 'movie' | 'tv'): string => {

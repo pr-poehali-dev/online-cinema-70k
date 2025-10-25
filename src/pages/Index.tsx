@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { tmdbApi, getImageUrl, type Content } from '@/lib/tmdb';
 import { useNavigate } from 'react-router-dom';
+import FiltersDialog from '@/components/FiltersDialog';
 
 const categories = [
   { name: 'Все', icon: 'Grid3x3', type: 'all' as const },
@@ -21,7 +22,9 @@ const Index = () => {
   const [popularMovies, setPopularMovies] = useState<Content[]>([]);
   const [popularShows, setPopularShows] = useState<Content[]>([]);
   const [searchResults, setSearchResults] = useState<Content[]>([]);
+  const [filteredContent, setFilteredContent] = useState<Content[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
   useEffect(() => {
     loadContent();
@@ -61,13 +64,33 @@ const Index = () => {
     return date ? new Date(date).getFullYear() : '';
   };
 
+  const handleApplyFilters = async (filters: {
+    genres: number[];
+    yearFrom: number;
+    yearTo: number;
+    ratingFrom: number;
+  }) => {
+    const hasFilters = filters.genres.length > 0 || filters.ratingFrom > 0;
+    setHasActiveFilters(hasFilters);
+
+    if (hasFilters) {
+      const mediaType = selectedCategory === 'Фильмы' ? 'movie' : selectedCategory === 'Сериалы' ? 'tv' : 'movie';
+      const results = await tmdbApi.discoverWithFilters(mediaType, filters);
+      setFilteredContent(results);
+    } else {
+      setFilteredContent([]);
+    }
+  };
+
   const displayedContent = searchQuery.trim() 
     ? searchResults 
-    : selectedCategory === 'Все' 
-      ? trendingContent 
-      : selectedCategory === 'Фильмы' 
-        ? popularMovies 
-        : popularShows;
+    : hasActiveFilters
+      ? filteredContent
+      : selectedCategory === 'Все' 
+        ? trendingContent 
+        : selectedCategory === 'Фильмы' 
+          ? popularMovies 
+          : popularShows;
 
   const handleContentClick = (item: Content) => {
     const mediaType = 'title' in item ? 'movie' : 'tv';
@@ -161,10 +184,10 @@ const Index = () => {
               </div>
             )}
           </div>
-          <Button size="lg" className="glass-hover border-white/10">
-            <Icon name="SlidersHorizontal" size={20} className="mr-2" />
-            Фильтры
-          </Button>
+          <FiltersDialog
+            onApplyFilters={handleApplyFilters}
+            mediaType={selectedCategory === 'Фильмы' ? 'movie' : 'tv'}
+          />
         </div>
 
         <div className="flex gap-3 mb-12 overflow-x-auto pb-4">
